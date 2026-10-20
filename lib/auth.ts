@@ -18,3 +18,10 @@ export function isAuthorized(header: string | string[] | undefined, secret: stri
   if (typeof header !== 'string' || !secret || secret.length < MIN_SECRET_LENGTH) return false;
   return safeEqual(header, `Bearer ${secret}`);
 }
+
+/** Extrai o token de "Authorization: Bearer <token>". Retorna null se ausente, malformado ou grande demais. */
+export function bearerToken(header: string | string[] | undefined): string | null {
+  if (typeof header !== 'string' || header.length > 4096) return null;
+  const m = /^Bearer ([A-Za-z0-9._~+/=-]+)$/.exec(header);
+  return m ? m[1] : null;
+}

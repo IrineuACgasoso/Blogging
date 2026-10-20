@@ -17,13 +17,51 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 export function AccountPopup({ onClose, onLogin }: { onClose: () => void; onLogin: () => void }) {
   const { user, name, signOut } = useAuth();
+  const [step, setStep] = useState<'idle' | 'confirm' | 'deleting' | 'error'>('idle');
+  const [msg, setMsg] = useState('');
+
+  async function deleteAccount() {
+    if (step === 'deleting') return;
+    setStep('deleting'); setMsg('');
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('Sessão expirada. Entre novamente.');
+      const res = await fetch('/api/account/delete', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? 'Não foi possível excluir a conta.');
+      await supabase.auth.signOut({ scope: 'local' }); // a conta não existe mais: só limpa a sessão local
+      window.location.assign('/');
+    } catch (e) {
+      setStep('error'); setMsg(e instanceof Error ? e.message : 'Não foi possível excluir a conta.');
+    }
+  }
+
   return (
     <Modal title="Minha conta" onClose={onClose}>
       {user ? (
         <>
           <p><strong>Nome:</strong> {name}</p>
           <p><strong>E-mail:</strong> {user.email}</p>
-          <button className="btn" onClick={async () => { await signOut(); onClose(); }}>Sair</button>
+          {step === 'idle' || step === 'error' ? (
+            <>
+              {step === 'error' && <p className="error" role="alert">{msg}</p>}
+              <div className="row">
+                <button className="btn" onClick={async () => { await signOut(); onClose(); }}>Sair</button>
+                <button className="btn ghost danger" onClick={() => setStep('confirm')}>Excluir minha conta</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p><strong>Excluir sua conta?</strong> Isso apaga seu nome, e-mail, curtidas e registros de visualização. Não dá para desfazer.</p>
+              <div className="row">
+                <button className="btn ghost danger" disabled={step === 'deleting'} onClick={deleteAccount}>
+                  {step === 'deleting' ? 'Excluindo…' : 'Sim, excluir'}
+                </button>
+                <button className="btn ghost" disabled={step === 'deleting'} onClick={() => setStep('idle')}>Cancelar</button>
+              </div>
+            </>
+          )}
         </>
       ) : (
         <>

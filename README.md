@@ -79,6 +79,7 @@ Blog pessoal com cara de "rede social privada": tema retrô (papel envelhecido +
 - Fotos: enviadas só por admin (regra no bucket), reduzidas a 1800px e reencodadas (isso remove localização/EXIF). Nos textos só entram imagens do nosso bucket.
 - Admin = linha na tabela `admins`, editável só via SQL. Todas as permissões são impostas por **RLS no banco**; esconder botões no front é só cosmético.
 - Textos em Markdown renderizados sem HTML bruto (proteção contra XSS).
+- **Excluir minha conta** (`api/account/delete.ts`): função de servidor que valida o JWT da própria pessoa, recusa contas de admin e apaga usuário, curtidas e registros de `post_views`. Não precisa de variável nova. O servidor do Vite (`npm run dev`) não executa `/api`: para testar localmente use `npx vercel dev`, ou teste no deploy.
 - A chave `service_role` só existe na Vercel (backend).
 
 ## Ideias para depois

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAuthorized } from './auth';
+import { isAuthorized, bearerToken } from './auth';
 
 const SECRET = 'a-very-long-random-secret-123';
 
@@ -25,5 +25,19 @@ describe('isAuthorized (cron)', () => {
     expect(isAuthorized(`Bearer ${SECRET.slice(0, -1)}`, SECRET)).toBe(false);
     expect(isAuthorized(`Bearer ${SECRET.replace('a', 'b')}`, SECRET)).toBe(false);
     expect(isAuthorized(`bearer ${SECRET}`, SECRET)).toBe(false);
+  });
+});
+
+describe('bearerToken', () => {
+  it('extrai um JWT válido', () => {
+    expect(bearerToken('Bearer aaa.bbb.ccc')).toBe('aaa.bbb.ccc');
+  });
+  it('retorna null para ausente, vazio, sem prefixo, com espaços ou array', () => {
+    for (const h of [undefined, '', 'Bearer', 'Bearer ', 'aaa.bbb', 'Bearer a b', 'bearer aaa', ['Bearer aaa']]) {
+      expect(bearerToken(h as any)).toBe(null);
+    }
+  });
+  it('recusa header gigante', () => {
+    expect(bearerToken('Bearer ' + 'a'.repeat(5000))).toBe(null);
   });
 });

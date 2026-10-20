@@ -39,10 +39,10 @@ export default function Privacy() {
         <p>Guardamos no seu navegador a sessão de login e, para quem não está logado, um identificador aleatório de visitante. Não usamos cookies de publicidade ou de rastreamento.</p>
 
         <h2>7. Por quanto tempo guardamos</h2>
-        <p>Enquanto a sua conta existir. Ao excluir a conta, seus dados de cadastro e suas curtidas são apagados.</p>
+        <p>Enquanto a sua conta existir. Você pode excluir a conta quando quiser, em Minha conta → Excluir minha conta. Ao excluir, apagamos seu nome, e-mail, curtidas e os registros de visualização ligados à sua conta.</p>
 
         <h2>8. Seus direitos</h2>
-        <p>Pela LGPD (art. 18), você pode pedir: confirmação de que tratamos seus dados, acesso a eles, correção, anonimização ou eliminação, portabilidade, informação sobre com quem os compartilhamos e a revogação do consentimento. Para exercer qualquer um desses direitos, ou pedir a exclusão da sua conta, escreva para {CONTACT ? <a href={`mailto:${CONTACT}`}>{CONTACT}</a> : 'o e-mail de contato'}.</p>
+        <p>Pela LGPD (art. 18), você pode pedir: confirmação de que tratamos seus dados, acesso a eles, correção, anonimização ou eliminação, portabilidade, informação sobre com quem os compartilhamos e a revogação do consentimento. Para exercer qualquer um desses direitos, escreva para {CONTACT ? <a href={`mailto:${CONTACT}`}>{CONTACT}</a> : 'o e-mail de contato'}.</p>
 
         <h2>9. Segurança</h2>
         <p>O acesso ao site usa conexão criptografada (HTTPS), e as permissões de leitura e escrita são controladas por regras no banco de dados: somente a autora acessa o painel de publicação.</p>
