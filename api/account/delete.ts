@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { deleteAccount } from '../../lib/deleteAccount';
+import { deleteAccount } from '../../lib/deleteAccount.js';
 
 // POST /api/account/delete  (Authorization: Bearer <JWT da própria pessoa>)
 // Só apaga a conta dona do token: o id vem do token validado pelo Supabase, nunca do corpo da requisição.

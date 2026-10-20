@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { pickLineup, type Cand } from '../../lib/scheduler';
-import { isAuthorized } from '../../lib/auth';
+import { pickLineup, type Cand } from '../../lib/scheduler.js';
+import { isAuthorized } from '../../lib/auth.js';
 
 const SLOTS = 6;
 

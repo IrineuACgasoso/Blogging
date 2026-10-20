@@ -1,4 +1,4 @@
-import { bearerToken } from './auth';
+import { bearerToken } from './auth.js';
 
 // Regra de negócio da exclusão de conta, sem I/O direto: as dependências são injetadas
 // (o handler liga ao Supabase; os testes usam fakes).
