@@ -20,6 +20,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         <button className="close" onClick={onClose} aria-label="Fechar menu">×</button>
         <Link to="/">Início</Link>
         <Link to="/sobre">Sobre mim</Link>
+        <Link to="/privacidade">Privacidade</Link>
         <button className="linklike" aria-expanded={showThemes} onClick={() => setShowThemes((v) => !v)}>
           Temas {showThemes ? '−' : '+'}
         </button>

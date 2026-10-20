@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { supabase } from '../lib/supabase';
 
@@ -26,7 +27,7 @@ export function AccountPopup({ onClose, onLogin }: { onClose: () => void; onLogi
         </>
       ) : (
         <>
-          <p>Entre ou crie uma conta para curtir as publicações.</p>
+          <p>Entre com sua conta Google para curtir as publicações.</p>
           <button className="btn" onClick={onLogin}>Entrar</button>
         </>
       )}
@@ -34,67 +35,41 @@ export function AccountPopup({ onClose, onLogin }: { onClose: () => void; onLogi
   );
 }
 
-const friendly = (m: string) =>
-  /invalid login/i.test(m) ? 'E-mail ou senha incorretos.'
-  : /already registered|already exists/i.test(m) ? 'Este e-mail já tem conta. Use "Entrar".'
-  : /password/i.test(m) ? 'Senha inválida: use pelo menos 8 caracteres.'
-  : /rate limit/i.test(m) ? 'Muitas tentativas. Aguarde alguns minutos.'
-  : m;
+function GoogleLogo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  );
+}
 
+// Login só com Google: não há senha para criar, esquecer ou vazar.
 export function LoginPopup({ onClose }: { onClose: () => void }) {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [show, setShow] = useState(false);
-  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [msg, setMsg] = useState('');
+  const [state, setState] = useState<'idle' | 'redirecting' | 'error'>('idle');
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setState('sending'); setMsg('');
-    if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (error) { setState('error'); setMsg(friendly(error.message)); return; }
-      onClose(); // o AuthProvider atualiza a conta sozinho
-      return;
-    }
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(), password, options: { data: { name: name.trim().slice(0, 60) } },
+  async function signInWithGoogle() {
+    if (state === 'redirecting') return;
+    setState('redirecting');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      // Volta para a página onde a pessoa estava (precisa estar nas Redirect URLs do Supabase).
+      options: { redirectTo: `${window.location.origin}${window.location.pathname}`, queryParams: { prompt: 'select_account' } },
     });
-    if (error) { setState('error'); setMsg(friendly(error.message)); return; }
-    if (data.session) { window.location.reload(); return; } // conta criada e já logada
-    setState('sent'); // só acontece se "Confirm email" estiver ligado no Supabase
+    if (error) setState('error'); // em caso de sucesso o navegador já está indo para o Google
   }
 
   return (
-    <Modal title={mode === 'login' ? 'Entrar' : 'Criar conta'} onClose={onClose}>
-      {state === 'sent' ? (
-        <p>Enviamos um e-mail de confirmação para <strong>{email}</strong>. Clique no link para ativar a conta e depois entre.</p>
-      ) : (
-        <form onSubmit={submit}>
-          {mode === 'signup' && (
-            <label>Nome<input required minLength={2} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
-          )}
-          <label>E-mail<input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></label>
-          <label>Senha
-            <input required type={show ? 'text' : 'password'} minLength={8} maxLength={72} value={password}
-              onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
-          </label>
-          <label className="check"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Mostrar senha</label>
-          {mode === 'signup' && <p className="muted small">Mínimo de 8 caracteres.</p>}
-          {state === 'error' && <p className="error" role="alert">{msg}</p>}
-          <button className="btn" disabled={state === 'sending'}>
-            {state === 'sending' ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta'}
-          </button>
-          <p className="muted small">
-            {mode === 'login' ? 'Ainda não tem conta? ' : 'Já tem conta? '}
-            <button type="button" className="linklike small" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setState('idle'); setMsg(''); }}>
-              {mode === 'login' ? 'Criar conta' : 'Entrar'}
-            </button>
-          </p>
-        </form>
-      )}
+    <Modal title="Entrar" onClose={onClose}>
+      <p>Entre com sua conta Google para curtir as publicações. Usamos apenas seu nome e e-mail; não temos acesso à sua senha.</p>
+      <p className="muted small">Ao entrar, você concorda com a <Link to="/privacidade">Política de Privacidade</Link>.</p>
+      {state === 'error' && <p className="error" role="alert">Não foi possível iniciar o login. Tente novamente.</p>}
+      <button className="btn google" onClick={signInWithGoogle} disabled={state === 'redirecting'}>
+        <GoogleLogo />
+        <span>{state === 'redirecting' ? 'Abrindo o Google…' : 'Entrar com o Google'}</span>
+      </button>
     </Modal>
   );
 }

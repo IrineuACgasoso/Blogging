@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { pickLineup, type Cand } from '../../lib/scheduler';
+import { isAuthorized } from '../../lib/auth';
 
 const SLOTS = 6;
 
 export default async function handler(req: any, res: any) {
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).end();
+  if (!isAuthorized(req.headers.authorization, process.env.CRON_SECRET)) return res.status(401).end();
 
   const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
@@ -17,12 +18,15 @@ export default async function handler(req: any, res: any) {
   if (!first) return res.status(200).json({ skipped: 'already ran today' }); // idempotente
 
   const since = new Date(now.getTime() - 7 * 864e5).toISOString().slice(0, 10);
-  const [{ data: posts }, { data: themes }, { data: views }, { data: pinned }] = await Promise.all([
+  const [rPosts, rThemes, rViews, rPinned] = await Promise.all([
     sb.from('posts').select('id,theme_id,published_at,last_shown_at,queue_level,likes_count').eq('status', 'published'),
     sb.from('themes').select('id,last_shown_on'),
     sb.from('post_views').select('post_id').gte('day', since),
     sb.from('daily_lineup').select('post_id').eq('day', day).eq('pinned', true),
   ]);
+  const failed = [rPosts, rThemes, rViews, rPinned].find((r) => r.error);
+  if (failed?.error) return res.status(500).json({ error: failed.error.message });
+  const { data: posts } = rPosts, { data: themes } = rThemes, { data: views } = rViews, { data: pinned } = rPinned;
 
   const v7 = new Map<string, number>();
   (views ?? []).forEach((v: any) => v7.set(v.post_id, (v7.get(v.post_id) ?? 0) + 1));

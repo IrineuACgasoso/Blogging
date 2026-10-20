@@ -41,6 +41,8 @@ function Posts() {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false); // trava síncrona: o state só atualiza no próximo render
 
   async function insertPhoto(file?: File) {
     if (!file || !edit) return;
@@ -67,6 +69,12 @@ function Posts() {
   useEffect(() => { load(); }, [load]);
 
   async function save(publish: boolean) {
+    if (savingRef.current) return;
+    savingRef.current = true; setSaving(true);
+    try { await persist(publish); } finally { savingRef.current = false; setSaving(false); }
+  }
+
+  async function persist(publish: boolean) {
     if (!edit?.title?.trim() || !edit.body?.trim() || !edit.theme_id) return setMsg('Preencha título, tema e texto.');
     const payload = { title: edit.title.trim(), body: edit.body, theme_id: edit.theme_id };
     let id = edit.id;
@@ -78,6 +86,7 @@ function Posts() {
       const { data, error } = await supabase.from('posts').insert({ ...payload, slug, status: 'draft' }).select('id').single();
       if (error) return setMsg(error.message);
       id = data.id;
+      setEdit((cur) => cur && { ...cur, id }); // se a publicação falhar, tentar de novo atualiza em vez de duplicar
     }
     if (publish && edit.status !== 'published') {
       const { error } = await supabase.rpc('publish_post', { p_post: id });
@@ -114,8 +123,8 @@ function Posts() {
         </div>
         {msg && <p className="error">{msg}</p>}
         <div className="row">
-          <button className="btn" onClick={() => save(true)}>{edit.status === 'published' ? 'Salvar alterações' : 'Publicar'}</button>
-          {edit.status !== 'published' && <button className="btn ghost" onClick={() => save(false)}>Salvar rascunho</button>}
+          <button className="btn" disabled={saving} onClick={() => save(true)}>{edit.status === 'published' ? 'Salvar alterações' : 'Publicar'}</button>
+          {edit.status !== 'published' && <button className="btn ghost" disabled={saving} onClick={() => save(false)}>Salvar rascunho</button>}
           <button className="btn ghost" onClick={() => { setEdit(null); setMsg(''); }}>Cancelar</button>
         </div>
       </div>

@@ -4,5 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY,
-  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } },
+  // detectSessionInUrl + PKCE: necessários para concluir o retorno do login com Google (?code=...).
+  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' } },
 );

@@ -105,3 +105,6 @@ select, input, textarea { font: inherit; padding: .6rem .7rem; border: 1px solid
 label.check { display: flex; gap: .5rem; align-items: center; font-weight: 400; }
 label.check input { width: auto; }
 .linklike.small { font-size: inherit; font-family: var(--sans); color: var(--red); text-decoration: underline; padding: 0; }
+
+.btn.google { display: inline-flex; align-items: center; gap: .6rem; background: #fff; color: #3c4043; border-color: #dadce0; }
+.btn.google:hover { background: #f8f9fa; }
