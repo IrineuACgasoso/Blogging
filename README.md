@@ -1,6 +1,6 @@
 # Blog da Namorada
 
-Blog pessoal com cara de "rede social privada": tema retrô (papel envelhecido + cartões brancos + títulos em vermelho), login por link mágico, curtidas, painel da autora e um **escalonador MLFQ** que escolhe quais posts aparecem na tela inicial a cada dia.
+Blog pessoal com cara de "rede social privada": tema retrô (papel envelhecido + cartões brancos + títulos em vermelho), login com e-mail e senha (sessão persistente), tela inicial em colagem de publicações e fotografias, curtidas, painel da autora e um **escalonador MLFQ** que escolhe quais posts aparecem na tela inicial a cada dia.
 
 **Stack:** React + Vite + TypeScript · Supabase (Postgres, Auth, RLS) · Vercel (hospedagem + cron diário).
 
@@ -27,11 +27,12 @@ Blog pessoal com cara de "rede social privada": tema retrô (papel envelhecido +
 
 1. Instale Node 18+ e rode `npm install`.
 2. **Crie o projeto no Supabase** (supabase.com, plano gratuito). Na tela de criação, em *Security*: deixe **Enable Data API marcado** (obrigatório), **Automatically expose new tables desmarcado** (o `schema.sql` já libera só o necessário) e *Enable automatic RLS* à sua escolha (marcar é seguro).
-3. No Supabase: **SQL Editor** → cole todo o `supabase/schema.sql` → Run.
+3. No Supabase: **SQL Editor** → cole todo o `supabase/schema.sql` → Run. Depois cole `supabase/002_fotos.sql` → Run (cria fotografias e o armazenamento de imagens).
+   Em seguida vá em **Authentication → Sign In / Providers → Email** e **desligue "Confirm email"** (assim a conta nova já entra logada, sem e-mail de confirmação).
 4. No Supabase: **Authentication → URL Configuration**: em *Site URL* coloque `http://localhost:5173` e adicione em *Redirect URLs* `http://localhost:5173/**` (depois adicione também o endereço da Vercel).
 5. Copie `.env.example` para `.env.local` e preencha `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (Supabase → Project Settings → API) e `VITE_BLOG_NAME`.
 6. `npm run dev` e abra http://localhost:5173.
-7. Clique no ícone de pessoa → Entrar → informe nome e e-mail → clique no link recebido. Faça isso com **as duas contas** (a sua e a dela).
+7. Clique no ícone de pessoa → Entrar → *Criar conta* (nome, e-mail, senha de 8+ caracteres). A página recarrega já logada. Faça isso com **as duas contas** (a sua e a dela) **antes de divulgar o site**, e rode o passo 8 logo em seguida.
 8. **Defina os admins** no SQL Editor (só você consegue fazer isso, pelo banco):
    ```sql
    insert into admins select id from auth.users where email in ('voce@email.com','ela@email.com');
@@ -69,10 +70,11 @@ Blog pessoal com cara de "rede social privada": tema retrô (papel envelhecido +
    Nota: o plano Hobby da Vercel permite cron diário (a execução pode variar dentro da hora agendada).
 
 ## Segurança (resumo)
-- Login por link no e-mail (o e-mail é comprovado). Ninguém vira admin digitando o e-mail de outra pessoa.
+- Login com senha (hash no Supabase). Admin é um *id de conta* na tabela `admins`, definido só por você via SQL: crie as duas contas de admin primeiro e promova-as logo, assim ninguém consegue "tomar" esses e-mails.
+- Fotos: enviadas só por admin (regra no bucket), reduzidas a 1800px e reencodadas (isso remove localização/EXIF). Nos textos só entram imagens do nosso bucket.
 - Admin = linha na tabela `admins`, editável só via SQL. Todas as permissões são impostas por **RLS no banco**; esconder botões no front é só cosmético.
 - Textos em Markdown renderizados sem HTML bruto (proteção contra XSS).
 - A chave `service_role` só existe na Vercel (backend).
 
 ## Ideias para depois
-Imagens de capa (Supabase Storage), agendamento de publicação, busca de texto, RSS, e moderar/ligar comentários.
+"Esqueci minha senha" (hoje redefine-se pelo painel do Supabase: Authentication → Users), agendamento de publicação, busca de texto, RSS, e moderar/ligar comentários.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
+import Markdown from '../components/Markdown';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../auth';
 import { useUi } from '../ui';
@@ -64,7 +64,7 @@ export default function Post() {
         </svg>
         <span>{likes}</span>
       </button>
-      <div className="prose"><ReactMarkdown>{post.body}</ReactMarkdown></div>
+      <div className="prose"><Markdown>{post.body}</Markdown></div>
     </article>
   );
 }

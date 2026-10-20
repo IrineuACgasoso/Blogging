@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../auth';
 import { slugify } from '../lib/utils';
+import { prepareImage, publicUrl, uploadImage } from '../lib/images';
 
 type Theme = { id: string; name: string; slug: string };
 type PostRow = { id: string; title: string; body: string; theme_id: string; status: string };
-type Tab = 'posts' | 'themes' | 'bio';
+type Tab = 'posts' | 'photos' | 'themes' | 'bio';
+type PhotoRow = { id: string; title: string; path: string };
 
 export default function Admin() {
   const { isAdmin, loading, user } = useAuth();
@@ -17,13 +19,14 @@ export default function Admin() {
     <>
       <h1 className="page-title">Painel da autora</h1>
       <div className="tabs" role="tablist">
-        {(['posts', 'themes', 'bio'] as Tab[]).map((t) => (
+        {(['posts', 'photos', 'themes', 'bio'] as Tab[]).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
-            {{ posts: 'Publicações', themes: 'Temas', bio: 'Biografia' }[t]}
+            {{ posts: 'Publicações', photos: 'Fotografia', themes: 'Temas', bio: 'Biografia' }[t]}
           </button>
         ))}
       </div>
       {tab === 'posts' && <Posts />}
+      {tab === 'photos' && <Photos />}
       {tab === 'themes' && <Themes />}
       {tab === 'bio' && <Bio />}
     </>
@@ -35,6 +38,24 @@ function Posts() {
   const [rows, setRows] = useState<PostRow[]>([]);
   const [edit, setEdit] = useState<Partial<PostRow> | null>(null);
   const [msg, setMsg] = useState('');
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function insertPhoto(file?: File) {
+    if (!file || !edit) return;
+    const caption = (prompt('Legenda da foto (opcional)') ?? '').replace(/[\[\]\n]/g, ' ').trim();
+    setUploading(true); setMsg('');
+    try {
+      const img = await prepareImage(file);
+      const up = await uploadImage(img.blob, 'posts');
+      const md = `\n\n![${caption}](${up.url})\n\n`;
+      const body = edit.body ?? '';
+      const pos = taRef.current ? taRef.current.selectionStart : body.length;
+      setEdit({ ...edit, body: body.slice(0, pos) + md + body.slice(pos) });
+    } catch (err: any) { setMsg(err.message ?? 'Erro ao enviar a foto.'); }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
+  }
 
   const load = useCallback(async () => {
     const [t, p] = await Promise.all([
@@ -82,8 +103,15 @@ function Posts() {
           </select>
         </label>
         <label>Texto (Markdown: **negrito**, *itálico*, # título, &gt; citação)
-          <textarea rows={16} value={edit.body ?? ''} onChange={(e) => setEdit({ ...edit, body: e.target.value })} />
+          <textarea ref={taRef} rows={16} value={edit.body ?? ''} onChange={(e) => setEdit({ ...edit, body: e.target.value })} />
         </label>
+        <div className="row" style={{ marginBottom: '1rem' }}>
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => insertPhoto(e.target.files?.[0])} />
+          <button type="button" className="btn ghost" disabled={uploading} onClick={() => fileRef.current?.click()}>
+            {uploading ? 'Enviando foto…' : 'Inserir foto no texto'}
+          </button>
+          <span className="muted small">A foto entra onde o cursor estiver.</span>
+        </div>
         {msg && <p className="error">{msg}</p>}
         <div className="row">
           <button className="btn" onClick={() => save(true)}>{edit.status === 'published' ? 'Salvar alterações' : 'Publicar'}</button>
@@ -173,5 +201,74 @@ function Bio() {
       <div className="row"><button className="btn" onClick={save}>Salvar biografia</button></div>
       {msg && <p className="muted">{msg}</p>}
     </div>
+  );
+}
+
+function Photos() {
+  const [rows, setRows] = useState<PhotoRow[]>([]);
+  const [title, setTitle] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('photos').select('id,title,path').order('created_at', { ascending: false });
+    setRows((data ?? []) as PhotoRow[]);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  function pick(f?: File) { setMsg(''); setFile(f ?? null); setPreview(f ? URL.createObjectURL(f) : null); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file || !title.trim()) return setMsg('Informe o título e escolha o arquivo.');
+    setBusy(true); setMsg('');
+    try {
+      const img = await prepareImage(file);
+      const up = await uploadImage(img.blob, 'photos');
+      const { error } = await supabase.from('photos').insert({ title: title.trim(), path: up.path, width: img.width, height: img.height });
+      if (error) { await supabase.storage.from('photos').remove([up.path]); throw error; }
+      setTitle(''); pick(undefined); setMsg('Fotografia adicionada.'); load();
+    } catch (err: any) { setMsg(err.message ?? 'Erro ao enviar.'); }
+    finally { setBusy(false); }
+  }
+
+  async function remove(p: PhotoRow) {
+    if (!confirm(`Excluir a fotografia "${p.title}"?`)) return;
+    await supabase.storage.from('photos').remove([p.path]);
+    const { error } = await supabase.from('photos').delete().eq('id', p.id);
+    setMsg(error ? error.message : 'Fotografia excluída.'); load();
+  }
+
+  return (
+    <>
+      <form onSubmit={save} className="form">
+        <label>Título da fotografia<input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></label>
+        <label>Arquivo (JPG, PNG ou WebP)
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => pick(e.target.files?.[0])} />
+        </label>
+        {preview && (
+          <figure className="polaroid preview">
+            <img src={preview} alt="Pré-visualização" />
+            <figcaption>{title || 'Sem título'}</figcaption>
+          </figure>
+        )}
+        {msg && <p className={msg.includes('adicionada') || msg.includes('excluída') ? 'muted' : 'error'}>{msg}</p>}
+        <div className="row"><button className="btn" disabled={busy}>{busy ? 'Enviando…' : 'Salvar fotografia'}</button></div>
+      </form>
+      <h2 className="sub">Suas fotografias</h2>
+      {rows.length === 0 && <p className="muted">Nenhuma fotografia ainda.</p>}
+      <div className="gallery">
+        {rows.map((r) => (
+          <figure key={r.id} className="polaroid">
+            <img src={publicUrl(r.path)} alt={r.title} loading="lazy" />
+            <figcaption>{r.title}</figcaption>
+            <button className="btn ghost danger" onClick={() => remove(r)}>Excluir</button>
+          </figure>
+        ))}
+      </div>
+    </>
   );
 }

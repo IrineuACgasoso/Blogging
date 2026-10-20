@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import Markdown from '../components/Markdown';
 import { supabase } from '../lib/supabase';
 
 export default function About() {
@@ -9,7 +9,7 @@ export default function About() {
     <>
       <h1 className="page-title">Sobre mim</h1>
       {bio === null ? <p className="empty">Carregando…</p>
-        : bio.trim() ? <div className="prose"><ReactMarkdown>{bio}</ReactMarkdown></div>
+        : bio.trim() ? <div className="prose"><Markdown>{bio}</Markdown></div>
         : <p className="empty">A biografia ainda não foi escrita.</p>}
     </>
   );
