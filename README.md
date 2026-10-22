@@ -10,7 +10,8 @@ Blog pessoal com cara de "rede social privada": tema retrô (papel envelhecido +
 |---|---|
 | `supabase/schema.sql` | Tabelas, regras de segurança (RLS) e funções do banco (publicar, views, virada do dia). Roda uma vez. |
 | `lib/scheduler.ts` | O cérebro do MLFQ: calcula a pontuação de cada post e sorteia a vitrine do dia. Código puro, com testes (`lib/scheduler.test.ts`). |
-| `api/cron/lineup.ts` | Função que a Vercel roda todo dia à meia-noite (horário de Recife) para montar a vitrine do dia. |
+| `lib/lineup.ts` | A virada do dia sem I/O: confere os dados vindos do banco, monta a vitrine e orquestra leitura → cálculo → gravação. Com testes (`lib/lineup.test.ts`). |
+| `api/cron/lineup.ts` | Função que a Vercel roda todo dia à meia-noite (horário de Recife). Só liga o `lib/lineup.ts` ao Supabase. |
 | `src/pages/*` | Telas: Início, Tema, Publicação, Sobre mim, Painel (admin). |
 | `src/components/*` | Menu lateral, popups de conta/login, cartão de post. |
 | `vercel.json` | Agenda do cron + rota SPA. |
@@ -27,7 +28,7 @@ Blog pessoal com cara de "rede social privada": tema retrô (papel envelhecido +
 
 1. Instale Node 18+ e rode `npm install`.
 2. **Crie o projeto no Supabase** (supabase.com, plano gratuito). Na tela de criação, em *Security*: deixe **Enable Data API marcado** (obrigatório), **Automatically expose new tables desmarcado** (o `schema.sql` já libera só o necessário) e *Enable automatic RLS* à sua escolha (marcar é seguro).
-3. No Supabase: **SQL Editor** → cole todo o `supabase/schema.sql` → Run. Depois `supabase/002_fotos.sql` → Run (fotografias e armazenamento de imagens) e `supabase/003_google_login.sql` → Run (cadastro robusto para login Google).
+3. No Supabase: **SQL Editor** → cole todo o `supabase/schema.sql` → Run. Depois `supabase/002_fotos.sql` → Run (fotografias e armazenamento de imagens) `supabase/003_google_login.sql` → Run (cadastro robusto para login Google) `supabase/004_cron_atomico.sql` → Run (virada do dia em uma transação só) e `supabase/005_publish_sem_buraco.sql` → Run (corrige a vitrine ao republicar um post). Todos os arquivos numerados podem ser rodados de novo sem estragar nada.
 4. No Supabase: **Authentication → URL Configuration**: em *Site URL* coloque `http://localhost:5173` e adicione em *Redirect URLs* `http://localhost:5173/**` (depois adicione também o endereço da Vercel).
 5. Copie `.env.example` para `.env.local` e preencha `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (Supabase → Project Settings → API) e `VITE_BLOG_NAME`.
 6. `npm run dev` e abra http://localhost:5173.
@@ -47,8 +48,12 @@ Blog pessoal com cara de "rede social privada": tema retrô (papel envelhecido +
 5. Confira *Authentication → URL Configuration* (Site URL e Redirect URLs com `http://localhost:5173/**` e o endereço da Vercel).
 6. **Depois de confirmar que o login Google funciona** (e que seu admin está de pé, passo 8), vá em *Authentication → Sign In / Providers → Email* e **desligue o provedor Email**. Isso é obrigatório: remover o formulário do site não impede que alguém chame o cadastro por senha diretamente na API.
 
+### Qualidade e segurança do código (`npm run check`)
+Um comando roda tudo que protege o projeto de regressões: `npm run check` (ESLint, Prettier, tipos do front-end **e** das funções em `api/`, e todos os testes). Individualmente: `npm run lint`, `npm run format` (arruma a formatação sozinho), `npm run format:check`, `npm run typecheck`. O mesmo conjunto roda sozinho no GitHub a cada push (`.github/workflows/ci.yml`): se aparecer um X vermelho no commit, algo quebrou.
+O ESLint também barra `eval`, `new Function` e URLs `javascript:`. A auditoria de dependências (`npm audit`) faz parte dos testes; vulnerabilidades conhecidas e aceitas ficam registradas, com o motivo, em `tests/static/auditoria-aceita.json`.
+
 ### Testes automáticos
-`npm test` roda os testes do escalonador (recência, anti-limbo, rebaixamento, sem repetição de tema).
+Toda a pasta `tests/` é uma rede de segurança: `npm test` (ou `node tests/run.mjs`) mostra uma linha por teste com PASS/FAIL e o total no fim. Cobre o escalonador, a virada do dia (cron), regras de acesso do banco, XSS no Markdown, configuração do projeto e, opcionalmente, o site e o Supabase no ar. Primeira vez: `cd tests && npm install`. Guia completo em `tests/README.md`.
 
 ### Checklist manual
 - [ ] Publicar post → aparece em primeiro na Início imediatamente.
@@ -71,7 +76,7 @@ Blog pessoal com cara de "rede social privada": tema retrô (papel envelhecido +
    curl -H "Authorization: Bearer SEU_CRON_SECRET" https://SEU-SITE.vercel.app/api/cron/lineup
    ```
    Resposta esperada na 1ª vez: `{"day":"...","items":[...]}`; repetindo no mesmo dia: `{"skipped":"already ran today"}` (é proposital: evita rebaixar duas vezes).
-   Se o cron falhar num dia, a Início completa a vitrine com os posts mais recentes (fallback), então nunca fica vazia.
+   **Se der erro (status 500), nada foi alterado:** a virada é gravada numa transação única (`commit_day`), então basta rodar o mesmo `curl` de novo. Enquanto isso a Início completa a vitrine com os posts mais recentes (fallback), então nunca fica vazia. Detalhes do erro ficam nos *Logs* da função, na Vercel.
    Nota: o plano Hobby da Vercel permite cron diário (a execução pode variar dentro da hora agendada).
 
 ## Segurança (resumo)

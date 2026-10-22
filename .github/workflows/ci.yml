@@ -1,0 +1,55 @@
+# Roda a cada push na main e em cada Pull Request. Se algo falhar, o GitHub mostra um X vermelho.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/package-lock.json
+
+      - name: Instalar dependências
+        run: |
+          npm ci
+          npm ci --prefix tests
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Formatação (Prettier)
+        run: npm run format:check
+
+      - name: Tipos (front-end e funções da Vercel)
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+        env:
+          # Valores de mentira: o build só precisa que existam. Nenhum segredo entra no CI.
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-placeholder
+
+      # Roda static, unit e db. A pasta "live" fica SKIP (não há .env.test no CI).
+      # Inclui a auditoria de dependências (tests/static/dependencias.test.mjs).
+      - name: Testes
+        run: npm test

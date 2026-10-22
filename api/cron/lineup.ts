@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
-import { pickLineup, type Cand } from '../../lib/scheduler.js';
+import { runDailyLineup } from '../../lib/lineup.js';
 import { isAuthorized } from '../../lib/auth.js';
+import type { ApiRequest, ApiResponse } from '../../lib/http.js';
 
 const SLOTS = 6;
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
+  res.setHeader('Cache-Control', 'no-store');
   if (!isAuthorized(req.headers.authorization, process.env.CRON_SECRET)) return res.status(401).end();
 
   const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -13,40 +15,20 @@ export default async function handler(req: any, res: any) {
   const now = new Date();
   const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Recife' }).format(now); // YYYY-MM-DD
 
-  const { data: first, error: e1 } = await sb.rpc('close_day', { p_day: day });
-  if (e1) return res.status(500).json({ error: e1.message });
-  if (!first) return res.status(200).json({ skipped: 'already ran today' }); // idempotente
-
-  const since = new Date(now.getTime() - 7 * 864e5).toISOString().slice(0, 10);
-  const [rPosts, rThemes, rViews, rPinned] = await Promise.all([
-    sb.from('posts').select('id,theme_id,published_at,last_shown_at,queue_level,likes_count').eq('status', 'published'),
-    sb.from('themes').select('id,last_shown_on'),
-    sb.from('post_views').select('post_id').gte('day', since),
-    sb.from('daily_lineup').select('post_id').eq('day', day).eq('pinned', true),
-  ]);
-  const failed = [rPosts, rThemes, rViews, rPinned].find((r) => r.error);
-  if (failed?.error) return res.status(500).json({ error: failed.error.message });
-  const { data: posts } = rPosts, { data: themes } = rThemes, { data: views } = rViews, { data: pinned } = rPinned;
-
-  const v7 = new Map<string, number>();
-  (views ?? []).forEach((v: any) => v7.set(v.post_id, (v7.get(v.post_id) ?? 0) + 1));
-  const pinnedIds = new Set((pinned ?? []).map((p: any) => p.post_id));
-
-  const pool: Cand[] = (posts ?? [])
-    .filter((p: any) => !pinnedIds.has(p.id))
-    .map((p: any) => ({
-      id: p.id, themeId: p.theme_id, level: p.queue_level,
-      publishedAt: new Date(p.published_at),
-      lastShownAt: p.last_shown_at ? new Date(p.last_shown_at) : null,
-      views7d: v7.get(p.id) ?? 0, likes: p.likes_count,
-    }));
-
-  const idle = new Map<string, number>();
-  (themes ?? []).forEach((t: any) =>
-    idle.set(t.id, t.last_shown_on ? (now.getTime() - new Date(t.last_shown_on).getTime()) / 864e5 : 10));
-
-  const items = pickLineup(pool, idle, now, Math.max(0, SLOTS - pinnedIds.size));
-  const { error: e2 } = await sb.rpc('open_day', { p_day: day, p_items: items });
-  if (e2) return res.status(500).json({ error: e2.message });
-  res.status(200).json({ day, items });
+  // A decisão (qual post aparece) é função pura em lib/lineup.ts; aqui só liga ao Supabase.
+  // Toda a escrita acontece dentro de commit_day (uma transação): falhou => nada mudou, pode chamar de novo.
+  const out = await runDailyLineup(day, now, SLOTS, {
+    readInputs: async (d) => {
+      const { data, error } = await sb.rpc('lineup_inputs', { p_day: d });
+      if (error) throw error;
+      return data;
+    },
+    commit: async (d, items, slots) => {
+      const { data, error } = await sb.rpc('commit_day', { p_day: d, p_items: items, p_slots: slots });
+      if (error) throw error;
+      return data === true;
+    },
+    log: (message, err) => console.error(message, err),
+  });
+  return res.status(out.status).json(out.body);
 }

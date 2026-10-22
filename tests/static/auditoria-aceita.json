@@ -1,0 +1,26 @@
+{
+  "_leia-me": "Vulnerabilidades CONHECIDAS e aceitas de propósito, com o motivo. Qualquer vulnerabilidade que não esteja aqui faz o teste de dependências reprovar. Vulnerabilidade 'high' ou 'critical' em código de PRODUÇÃO nunca pode ser aceita aqui. Ao atualizar o pacote, apague a linha.",
+  "producao": {
+    "GHSA-wrjc-x8rr-h8h6": "react-router (moderado): redirecionamento aberto em <Link>/useNavigate. Não explorável aqui: todo destino é fixo ou /post/<slug> e /tema/<slug>, com slug só de a-z0-9- gravado apenas pela admin. Corrigir exige subir para a v7: fazer numa etapa própria, com teste no navegador.",
+    "GHSA-337j-9hxr-rhxg": "react-router (moderado): vale só para renderização no servidor (SSR). O blog é uma SPA (sem SSR); não se aplica."
+  },
+  "desenvolvimento": {
+    "_nota": "Ferramentas que NÃO vão para o site no ar. Risco só na máquina de quem desenvolve: não use 'npm run dev -- --host' em rede pública, nem 'vitest --ui'. Corrigir exige vite 8 / vitest 5 (saltos grandes): etapa própria.",
+    "GHSA-wrjc-x8rr-h8h6": "ver produção",
+    "GHSA-337j-9hxr-rhxg": "ver produção",
+    "GHSA-4w7w-66w2-5vf9": "vite (dev server)",
+    "GHSA-587h-7wmj-h5pm": "vite (dev server, Windows)",
+    "GHSA-5gmw-xhrv-c9v3": "tinypool (vitest): só com opções de worker controladas por atacante; não usamos entrada externa",
+    "GHSA-5xrq-8626-4rwp": "vitest UI: não usamos 'vitest --ui'",
+    "GHSA-67mh-4wv8-2f99": "esbuild (dev server)",
+    "GHSA-698v-4r3x-3vcv": "vite/launch-editor (dev server, Windows)",
+    "GHSA-82fw-gwwq-j7x9": "vitest mocker",
+    "GHSA-85c8-ppgw-ccpr": "tinypool (vitest): ver GHSA-5gmw-xhrv-c9v3",
+    "GHSA-9jrq-w75r-8gcw": "vite (dev server)",
+    "GHSA-fx2h-pf6j-xcff": "vite (dev server, Windows)",
+    "GHSA-qxg6-89mg-rqv8": "vitest mocker",
+    "GHSA-r825-w8mm-5pxw": "vite/launch-editor (dev server)",
+    "GHSA-rq7h-c2jc-7f22": "vite (dev server)",
+    "GHSA-v6wh-96g9-6wx3": "vite/launch-editor (dev server, Windows)"
+  }
+}

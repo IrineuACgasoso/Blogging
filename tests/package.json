@@ -1,0 +1,12 @@
+{
+  "name": "blog-tests",
+  "private": true,
+  "type": "module",
+  "description": "Testes do blog. Rode com: node tests/run.mjs (a partir da raiz do projeto)",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17"
+  }
+}

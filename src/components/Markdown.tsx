@@ -9,7 +9,10 @@ export default function Markdown({ children }: { children: string }) {
       components={{
         img: ({ src, alt }) =>
           typeof src === 'string' && src.startsWith(PREFIX) ? (
-            <span className="fig"><img src={src} alt={alt ?? ''} loading="lazy" />{alt ? <em>{alt}</em> : null}</span>
+            <span className="fig">
+              <img src={src} alt={alt ?? ''} loading="lazy" />
+              {alt ? <em>{alt}</em> : null}
+            </span>
           ) : null,
       }}
     >

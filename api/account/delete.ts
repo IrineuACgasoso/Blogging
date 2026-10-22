@@ -1,11 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { deleteAccount } from '../../lib/deleteAccount.js';
+import type { ApiRequest, ApiResponse } from '../../lib/http.js';
 
 // POST /api/account/delete  (Authorization: Bearer <JWT da própria pessoa>)
 // Só apaga a conta dona do token: o id vem do token validado pelo Supabase, nunca do corpo da requisição.
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   res.setHeader('Cache-Control', 'no-store');
-  if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).end(); }
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).end();
+  }
   try {
     const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -13,7 +17,7 @@ export default async function handler(req: any, res: any) {
     const out = await deleteAccount(req.headers.authorization, {
       userIdFromToken: async (token) => {
         const { data, error } = await sb.auth.getUser(token);
-        return error ? null : data.user?.id ?? null;
+        return error ? null : (data.user?.id ?? null);
       },
       // service_role não tem auth.uid(): is_admin() daria sempre false aqui, então consulta a tabela direto.
       isAdmin: async (id) => {

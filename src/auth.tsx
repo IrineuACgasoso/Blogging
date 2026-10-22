@@ -15,7 +15,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const uid = user?.id;
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => { setUser(data.session?.user ?? null); setSessionReady(true); });
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+      setSessionReady(true);
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -32,7 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Falha fechado: erro na consulta => não-admin. Só esconde UI; quem protege de verdade é a RLS.
       if (live) setProfile({ uid, name: p?.name ?? 'Leitor', isAdmin: adm === true });
     })();
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, [uid]);
 
   // "loading" só termina quando a sessão E o papel (admin) do usuário atual foram resolvidos;
@@ -40,7 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const current = profile && profile.uid === uid ? profile : null;
   const loading = !sessionReady || (uid !== undefined && current === null);
 
-  const signOut = async () => { await supabase.auth.signOut(); };
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
   return (
     <AuthCtx.Provider value={{ user, name: current?.name ?? '', isAdmin: current?.isAdmin ?? false, loading, signOut }}>
       {children}

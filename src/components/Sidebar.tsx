@@ -10,14 +10,20 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
 
   useEffect(() => {
     if (!open) return;
-    supabase.from('themes').select('id,name,slug').order('name').then(({ data }) => setThemes(data ?? []));
+    supabase
+      .from('themes')
+      .select('id,name,slug')
+      .order('name')
+      .then(({ data }) => setThemes(data ?? []));
   }, [open]);
 
   return (
     <>
       {open && <div className="backdrop" onClick={onClose} />}
       <nav className={`sidebar ${open ? 'open' : ''}`} aria-hidden={!open} aria-label="Menu">
-        <button className="close" onClick={onClose} aria-label="Fechar menu">×</button>
+        <button className="close" onClick={onClose} aria-label="Fechar menu">
+          ×
+        </button>
         <Link to="/">Início</Link>
         <Link to="/sobre">Sobre mim</Link>
         <Link to="/privacidade">Privacidade</Link>
@@ -27,10 +33,18 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         {showThemes && (
           <ul>
             {themes.length === 0 && <li className="muted">Nenhum tema ainda.</li>}
-            {themes.map((t) => <li key={t.id}><Link to={`/tema/${t.slug}`}>{t.name}</Link></li>)}
+            {themes.map((t) => (
+              <li key={t.id}>
+                <Link to={`/tema/${t.slug}`}>{t.name}</Link>
+              </li>
+            ))}
           </ul>
         )}
-        {isAdmin && <Link to="/admin" className="admin-link">Painel da autora</Link>}
+        {isAdmin && (
+          <Link to="/admin" className="admin-link">
+            Painel da autora
+          </Link>
+        )}
       </nav>
     </>
   );

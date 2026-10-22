@@ -22,5 +22,8 @@ function check(path) {
   }
 }
 ROOTS.forEach(walk);
-if (bad.length) { console.error(bad.join('\n')); process.exit(1); }
+if (bad.length) {
+  console.error(bad.join('\n'));
+  process.exit(1);
+}
 console.log('imports ESM ok');
