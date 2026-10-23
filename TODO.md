@@ -1,9 +1,10 @@
 # TODO
 
-Atualizado em 22/10/2026.
+Atualizado em 23/10/2026.
 
 Legenda: `[x]` feito · `[ ]` pendente. "Falta testar" = o código está pronto, mas ainda não foi confirmado no ar.
-Confirmados no ar até agora: login Google, acesso de admin e exclusão de conta.
+Confirmados no ar até agora: login Google, acesso de admin, exclusão de conta e o endereço do cron respondendo com o segredo certo.
+Banco: `schema.sql`, `002`, `003`, `004` e `005` já rodados no Supabase.
 
 ## 🔴 Urgente (antes de divulgar)
 
@@ -28,14 +29,19 @@ Confirmados no ar até agora: login Google, acesso de admin e exclusão de conta
 - [x] `/admin` não expulsa mais a admin ao recarregar (falta testar)
 - [x] Proteção contra duplo clique em "Publicar" (falta testar)
 - [x] Imports ESM corrigidos nas funções da Vercel, com checagem no build
-- [ ] **Testar o cron** com o `curl` do README (provavelmente nunca rodou por causa dos imports)
+- [x] **Testar o cron** com o `curl` do README: respondeu `skipped / already ran today` (segredo aceito, banco respondeu)
+- [ ] **Conferir que a vitrine de hoje foi gravada**: rodar no SQL Editor a consulta de `daily_lineup` do dia (está no README, passo 5) e ver até 6 linhas
+- [ ] **Confirmar que o deploy novo está no ar** (código com `commit_day`): a resposta `skipped` é igual na versão antiga e na nova; ver na Vercel o último deploy e rodar `node tests/run.mjs live`
+- [ ] **Conferir a execução automática da meia-noite**: na Vercel, *Settings › Cron Jobs* / *Logs*, depois da 00h de Recife
+- [ ] **Subir o código novo ao GitHub e ver o CI verde** (aba *Actions*); opcional: exigir CI verde em *Settings › Branches*
+- [ ] **Configurar os testes `live`** (`tests/.env.test`, passo a passo em `tests/README.md`) e rodar `node tests/run.mjs live`
 - [x] Confirmar que `supabase/003_google_login.sql` foi rodado
-- [x] **Cron atômico** (falta rodar `004_cron_atomico.sql` no Supabase e testar no ar): leitura em snapshot único + gravação em transação única (`commit_day`); contagem de views agregada no banco (acabou o limite silencioso de 1000 linhas). Falhou => nada muda e o `curl` pode ser repetido
+- [x] **Cron atômico** (`004_cron_atomico.sql` rodado; falta só a conferência no ar listada acima): leitura em snapshot único + gravação em transação única (`commit_day`); contagem de views agregada no banco (acabou o limite silencioso de 1000 linhas). Falhou => nada muda e o `curl` pode ser repetido
 - [ ] **Rascunho automático no editor**, para não perder texto numa sessão expirada
-- [x] Republicar um post já na vitrine derrubava outro e deixava buraco (`005_publish_sem_buraco.sql`, falta rodar no Supabase)
+- [x] Republicar um post já na vitrine derrubava outro e deixava buraco (`005_publish_sem_buraco.sql`, já rodado)
 - [ ] Limitar abuso e crescimento de `post_views` (poda de registros antigos)
 - [ ] Upload de foto: excluir primeiro a linha do banco e depois o arquivo; tratar WebP no Safari antigo; `bmp.close()`
-- [x] Qualidade: type-check da pasta `api/` (`tsconfig.server.json`, já no build), ESLint (com regras anti-`eval`), Prettier e CI no GitHub (`.github/workflows/ci.yml`). Falta: no GitHub, em *Settings › Branches*, exigir o CI verde antes de aceitar mudanças (opcional)
+- [x] Qualidade: type-check da pasta `api/` (`tsconfig.server.json`, já no build), ESLint (com regras anti-`eval`), Prettier e CI no GitHub (`.github/workflows/ci.yml`)
 - [x] Auditoria de dependências automática nos testes (`tests/static/dependencias.test.mjs`)
 - [ ] **Atualizar dependências com vulnerabilidades conhecidas** (etapa própria, com teste no navegador): `react-router-dom` 6 → 7 (único de produção, moderado, não explorável hoje) e, só de desenvolvimento, `vite` e `vitest` (ver `tests/static/auditoria-aceita.json`)
 - [ ] Escalonador: "priority boost" para os níveis não convergirem todos ao 3
@@ -63,7 +69,9 @@ Confirmados no ar até agora: login Google, acesso de admin e exclusão de conta
 
 ## Ordem sugerida
 
-1. Rodar `supabase/004_cron_atomico.sql`, fazer o deploy e testar o cron com o `curl` do README
+1. Fechar as conferências do cron (vitrine de hoje, deploy novo, execução da meia-noite) e ver o CI verde no GitHub
 2. Backup (item 2)
-3. ~~Cron atômico~~ (feito, falta testar no ar)
-4. Rascunho automático no editor
+3. Parte 3: rascunho automático no editor + correções do upload de foto (com testes)
+4. Parte 4: poda e limite de `post_views` + "priority boost" do escalonador
+5. Parte 5: cabeçalhos de segurança, domínio próprio e alerta de falha do cron (itens 13 e 14)
+6. Atualizar dependências (`react-router` 7, `vite`, `vitest`) com teste no navegador

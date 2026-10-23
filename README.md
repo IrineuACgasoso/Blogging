@@ -75,6 +75,8 @@ Toda a pasta `tests/` é uma rede de segurança: `npm test` (ou `node tests/run.
    ```bash
    curl -H "Authorization: Bearer SEU_CRON_SECRET" https://SEU-SITE.vercel.app/api/cron/lineup
    ```
+   No **Windows (PowerShell)** o `curl` é outro comando; use: `curl.exe -i -H "Authorization: Bearer SEU_CRON_SECRET" https://SEU-SITE.vercel.app/api/cron/lineup` (ou `Invoke-RestMethod -Uri "https://SEU-SITE.vercel.app/api/cron/lineup" -Headers @{ Authorization = "Bearer SEU_CRON_SECRET" }`). Escreva o `https://` uma vez só.
+   Para conferir a vitrine gravada, no SQL Editor do Supabase: `select l.position, p.title, l.pinned from daily_lineup l join posts p on p.id = l.post_id where l.day = (now() at time zone 'America/Recife')::date order by l.position;`
    Resposta esperada na 1ª vez: `{"day":"...","items":[...]}`; repetindo no mesmo dia: `{"skipped":"already ran today"}` (é proposital: evita rebaixar duas vezes).
    **Se der erro (status 500), nada foi alterado:** a virada é gravada numa transação única (`commit_day`), então basta rodar o mesmo `curl` de novo. Enquanto isso a Início completa a vitrine com os posts mais recentes (fallback), então nunca fica vazia. Detalhes do erro ficam nos *Logs* da função, na Vercel.
    Nota: o plano Hobby da Vercel permite cron diário (a execução pode variar dentro da hora agendada).
